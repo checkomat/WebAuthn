@@ -15,6 +15,11 @@
 
 <body>
 	<div class="container">
+    <div class="form-group">
+      <label class="form-label" for="console">Console</label>
+      <textarea class="form-input" id="console" style="font-size: 10px" placeholder="Textarea" rows="5"></textarea>
+    </div>
+
 	  <div class="columns">
 
 	    <div class="column">
@@ -66,6 +71,14 @@
 
     <script>
 
+				let logtext = "";
+
+				var log = (text, obj) => {
+					logtext += (text +  "\n" + sf(obj) + "\n");
+					console.log(text, obj);
+					document.getElementById("console").innerText = 	logtext;
+				}
+	
 				document.getElementById('register').setAttribute( "autocomplete", "off" ); 
 				document.getElementById('login').setAttribute( "autocomplete", "off" ); 
 
@@ -122,11 +135,10 @@
 							}
 						*/
 
-//	          alert('SUCCESSFULLY CREATED A CREDENTIAL')
-	          console.log('SUCCESSFULLY CREATED A CREDENTIAL', rawAttestation)
+	          log('SUCCESSFULLY CREATED A CREDENTIAL', publicKeyCredentialToJSON(rawAttestation))
 
 						let clientData = arrayBufferToString(rawAttestation.response.clientDataJSON)
-          	console.log('ClientDataJSON: ', clientData)
+          	log('ClientDataJSON: ', clientData)
 
           	let attestationObject = CBOR.decode(rawAttestation.response.attestationObject);
 						/*
@@ -136,7 +148,7 @@
 									fmt: "packed" // "none", "packed", "tpm", "android-key","android-safetynet", "fido-u2f"
 								}
 						*/
-	          console.log('AttestationObject: ', attestationObject);
+	          log('AttestationObject: ', attestationObject);
 	
 						// ArrayBuffer AuthenticatorResponse.attestationObject
 
@@ -158,10 +170,10 @@
 						  "COSEPublicKey": "pQECAyYgASFYIJ35hE2dS5zrC6Y1ySwbcYCbw/xHRenUI3y1sjWbRYb+IlggJSsAeURu0AAphu0ogcDKWqdNqVU6ZKJSYsg7/dExjA4="
 						}
 						*/
-	          console.log('AuthData: ', authData);
-	          console.log('AAGUID: ', bufToHex(authData.aaguid));
-	          console.log('CredID: ', bufToHex(authData.credID));
-	          console.log('User PublicKey', CBOR.decode(authData.COSEPublicKey.buffer)); // credential public key is referred to as the user public key in FIDO UAF
+	          log('AuthData: ', authData);
+	          log('AAGUID: ', bufToHex(authData.aaguid));
+	          log('CredID: ', bufToHex(authData.credID));
+	          log('User PublicKey', CBOR.decode(authData.COSEPublicKey.buffer)); // credential public key is referred to as the user public key in FIDO UAF
 
 						document.getElementById("reg3").innerText = 
 								"rawAttestation:\n" + sf(publicKeyCredentialToJSON(rawAttestation)) + "\n" +
@@ -179,8 +191,8 @@
           	return authData.credID // ?
 					})
           .catch((error) => {
-              alert('FAIL TO CREATE CREDENTIAL!Open your browser console!')
-              console.log('FAIL', error)
+              alert('fail to create credential! ' + error)
+              log('fail to create credential!', error)
           })
   		})
 
@@ -201,17 +213,16 @@
 					return navigator.credentials.get({ 'publicKey': publicKey })
           .then((rawAssertion) => {
 
-//	          alert('SUCCESSFULLY GOT AN ASSERTION! Open your browser console!')
-	          console.log('\n\n\nSUCCESSFULLY GOT AN ASSERTION!', rawAssertion);
+	          log('\n\n\nSUCCESSFULLY GOT AN ASSERTION!', rawAssertion);
 
 						let clientData = arrayBufferToString(rawAssertion.response.clientDataJSON)
-          	console.log('ClientDataJSON: ', clientData)
+          	log('ClientDataJSON: ', clientData)
 
 						document.getElementById("aut3").innerText = "rawAssertion:\n" + 
 							sf(publicKeyCredentialToJSON(rawAssertion)) + "\n" +
 							sf(rawAssertion.response);
 
-	          console.log('rawAssertion.response: ', rawAssertion.response);
+	          log('rawAssertion.response: ', rawAssertion.response);
 
 						// ArrayBuffer AuthenticatorResponse.attestationObject
 
@@ -235,7 +246,10 @@
 							  }
 							}
 						*/
-	          console.log('AuthData: ', authData);
+
+	          log('authData: ', authData);
+	          log('userHandle: ', base64encode(rawAssertion.response.userHandle));
+	          log('signature: ', base64encode(rawAssertion.response.signature));
 
 						document.getElementById("aut3").innerText = 
 								"rawAssertion:\n" + sf(publicKeyCredentialToJSON(rawAssertion)) + "\n" +
@@ -256,8 +270,8 @@
 */
           })
           .catch((error) => {
-              alert('Open your browser console!')
-              console.log('FAIL', error)
+              alert('fail get credential! ' + error)
+              log('fail to get credential', error)
           })
     		})
 

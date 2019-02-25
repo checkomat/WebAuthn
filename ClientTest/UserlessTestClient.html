@@ -78,7 +78,8 @@
 					console.log(text, obj);
 					document.getElementById("console").innerText = 	logtext;
 				}
-	
+				var credentialId = "";
+
 				document.getElementById('register').setAttribute( "autocomplete", "off" ); 
 				document.getElementById('login').setAttribute( "autocomplete", "off" ); 
 
@@ -90,6 +91,7 @@
 
           var userID = 'Kosv9fPtkDoh4Oz7Yq/pVgWHS8HhdlCto5cR0aBoVMw='
           var id = Uint8Array.from(window.atob(userID), c=>c.charCodeAt(0))
+
 
 		      var publicKey = {
             'challenge': challenge,
@@ -114,7 +116,7 @@
 						// desired properties of the credential to be created, 
 						// sequence ordered from most preferred to least preferred.
                 { 'type': 'public-key', 'alg': -7  } //e.g. -7 for "ES256" and 
-               ,{ 'type': 'public-key', 'alg': -257 } // -257 for "RS256". 
+								,{ 'type': 'public-key', 'alg': -257 } // -257 for "RS256". 
             ]
           }
 
@@ -188,7 +190,7 @@
 
 						document.getElementById("reg4").innerText = "attestation:^\n" + sf(attestation);
 */
-          	return authData.credID // ?
+          	credentialId = authData.credID;
 					})
           .catch((error) => {
               alert('fail to create credential! ' + error)
@@ -203,9 +205,13 @@
           window.crypto.getRandomValues(challenge);
 
 					var publicKey = { //  contains only the challenge 
-					  challenge: challenge
-						// ,allowCredentials: [ { type: "public-key", id: credentialId }
+					  challenge: challenge,
+
+						allowCredentials: [
+						    { type: "public-key", id: credentialId }
+						]
 						// authenticatorSelection.requireResidentKey is true, so there is no need to pass a credential
+
 					}
 					
 					document.getElementById("aut2").innerText = "navigator.credentials.get({publicKey:\n" + sf(publicKey)+ "}";

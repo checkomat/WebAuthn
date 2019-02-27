@@ -6,10 +6,13 @@
     <!-- Ensure use of most common Unicode characters -->
     <meta charset="utf-8">
 
+		<!-- https://picturepan2.github.io/spectre/index.html -->
+
     <link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre.min.css">
     <!-- Considered an "experimental" feature -->
     <link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre-exp.min.css">
     <!-- Spectre.css icons are used -->
+
     <link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre-icons.min.css"> 
 </head>
 
@@ -19,48 +22,62 @@
       <label class="form-label" for="console">Console</label>
       <textarea class="form-input" id="console" style="font-size: 10px" placeholder="Textarea" rows="5"></textarea>
     </div>
-
 	  <div class="columns">
-
-	    <div class="column">
+	    <div class="column col-sm">
 	      <div class="card">
 	        <h3>Register</h3>
 	        <div class="card-body">
 	          <form id="register" onsubmit="return false">
+							<div class="form-group">
+							  <label class="form-switch" >
+							    <input type="checkbox" name="usePlatformAuthenticator">
+							    <i class="form-icon"></i> use platform authenticator
+							  </label>
+							  <label class="form-switch" >
+							    <input type="checkbox" name="requireDirectAttestation">
+							    <i class="form-icon"></i> require attestation (direct)
+							  </label>
+							</div>
 	              <input type="text" name="username" placeholder="Username" style="font-size: 14px"><br>
 	              <input type="text" name="displayName" placeholder="DisplayName" style="font-size: 14px"><br>
-	              <button class="btn btn-primary" action="submit">Register</button>
-	
-	          </form>
-	
+	              <button class="btn btn-primary btn-sm" action="submit">Register</button>
+		          </form>
 						<br>
 						<div class="text-break">
-			        <b style="font-size: 14px">2. App to Client</b>
-			   			<pre id="reg2" style="font-size: 14px"> </pre>   
-			        <b style="font-size: 14px">3. Client to App</b>
-			        <pre id="reg3" style="font-size: 14px"> </pre>   
+			        <b style="font-size: 12px">2. App to Client</b>
+			   			<pre id="reg2" style="font-size: 10px"> </pre>   
+			        <b style="font-size: 12px">3. Client to App</b>
+			        <pre id="reg3" style="font-size: 10px"> </pre>   
 						</div>
 					</div><!-- .card-body --> 
 	      </div><!-- .card -->
 			</div><!-- .column col-4 -->
 
-			<div class="column">
+	    <div class="column col-sm">
 				<div class="card">
 				  <h3>Authenticate</h3>
-				    <div class="card-body">
-			        <form id="login" onsubmit="return false">
-			            <button class="btn btn-primary" action="submit">Authenticate</button>
-			        </form>
-							<br>
-							<br>
-							<br>
-							<div class="text-break">
-						    <b style="font-size: 14px">2. App to Client</b>
-								<pre id="aut2" style="font-size: 14px"> </pre>   		
-						    <b style="font-size: 14px">3. Client to App</b>
-						    <pre id="aut3" style="font-size: 14px"> </pre>   				
+			    <div class="card-body">
+		        <form id="login" onsubmit="return false">
+							<div class="form-group">
+							  <label class="form-switch" >
+							    <input type="checkbox" name="allowCredentialsSelection">
+							    <i class="form-icon"></i> allowCredentials (use last one created in browser)
+							  </label>
 							</div>
-						</div><!-- .card-body -->			
+	            <input type="text" name="credentialID" placeholder="" style="font-size: 14px" disabled><br> 
+							<br>
+	            <button class="btn btn-primary btn-sm" action="submit">Authenticate</button>
+		        </form>
+						<br>
+						<br>
+						<br>
+						<div class="text-break">
+					    <b style="font-size: 12px">2. App to Client</b>
+							<pre id="aut2" style="font-size: 10px"> </pre>   		
+					    <b style="font-size: 12px">3. Client to App</b>
+					    <pre id="aut3" style="font-size: 10px"> </pre>   				
+						</div>
+					</div><!-- .card-body -->			
 				</div><!-- .card -->
 			</div><!-- .column col-4 -->
 					
@@ -71,17 +88,52 @@
 
     <script>
 
-				let logtext = "";
-
+				let logtext = '';
 				var log = (text, obj) => {
-					logtext += (text +  "\n" + sf(obj) + "\n");
-					console.log(text, obj);
+					if(obj) {
+						logtext += (text +  "\n" + sf(obj) + "\n");
+						console.log(text, obj);
+					}
+					else {
+						logtext += (text + "\n");
+						console.log(text);
+					}
+
 					document.getElementById("console").innerText = 	logtext;
 				}
-				var credentialId = "";
+
+    		if (!PublicKeyCredential) {
+        	log('WebAuthn APIs are not available on this user agent!');
+					alert('WebAuthn APIs are not available on this user agent!');
+				}
 
 				document.getElementById('register').setAttribute( "autocomplete", "off" ); 
-				document.getElementById('login').setAttribute( "autocomplete", "off" ); 
+				document.getElementById('login').setAttribute( "autocomplete", "off" );
+
+				function markPlatformAuthenticatorUnavailable() {
+					document.getElementById('register').usePlatformAuthenticator.disabled = true;
+					log("PlatformAuthenticator Unavailable");
+				}
+
+			  //Update UI to reflect availability of platform authenticator
+			  if (PublicKeyCredential && typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== "function") {
+			      markPlatformAuthenticatorUnavailable();
+			  } else if (PublicKeyCredential && typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === "function") {
+			      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(available => {
+			          if (!available) {
+			              markPlatformAuthenticatorUnavailable();
+			          }
+			      }).catch(e=>{
+			          markPlatformAuthenticatorUnavailable();
+			      });
+			  }
+				
+						
+				var showCredID = (ci) => {
+					document.getElementById('login').credentialID.value = ci;
+				}
+
+				showCredID(localStorage.getItem("credentialId"));
 
         document.getElementById('register').addEventListener('submit', function(event) {
           event.preventDefault();
@@ -92,6 +144,22 @@
           var userID = 'Kosv9fPtkDoh4Oz7Yq/pVgWHS8HhdlCto5cR0aBoVMw='
           var id = Uint8Array.from(window.atob(userID), c=>c.charCodeAt(0))
 
+					var attachment = "cross-platform"
+					if(this.usePlatformAuthenticator.checked) {
+						attachment = "platform";
+					}
+
+					var attestation = 'none'; // not interested in authenticator attestation.
+				  if (this.requireDirectAttestation.checked) {
+						attestation = 'direct'; 
+						// indicates that the Relying Party wants to receive the 
+						// attestation statement as generated by the authenticator.
+				  }
+					// var attestation = 'indirect'; // if you want the client to anonymise your attestation, using for example Attestation CA
+					// prefers an attestation conveyance yielding verifiable attestation statements, 
+					// but allows the client to decide how to obtain such attestation statements.
+					// client MAY replace the authenticator-generated attestation statements with 
+					// attestation statements generated by an Anonymization CA,
 
 		      var publicKey = {
             'challenge': challenge,
@@ -103,21 +171,32 @@
             'user': {
                 'id': id, // It is RECOMMENDED to let the user handle be 64 random bytes, 
 													// and store this value in the user's account.
-
                 'name': this.username.value, // 'alice@example.com',
                 'displayName': this.displayName.value // 'Alice im Wunderland'
             },
 							
 						'authenticatorSelection': { // forces client to only use authenticator that support RP.
-							'requireResidentKey': true
+  	          //Select authenticators that support username-less flows
+							'requireResidentKey': true,
+
+            	//Select authenticators that have a second factor (e.g. PIN, Bio)
+//            	userVerification: "required",
+
+    	        //Selects between bound or detachable authenticators
+	            authenticatorAttachment: attachment
+							
 						},
+
+						'attestation': attestation,
 
             'pubKeyCredParams': [
 						// desired properties of the credential to be created, 
 						// sequence ordered from most preferred to least preferred.
                 { 'type': 'public-key', 'alg': -7  } //e.g. -7 for "ES256" and 
 								,{ 'type': 'public-key', 'alg': -257 } // -257 for "RS256". 
-            ]
+            ],
+		        //Since Edge shows UI, it is better to select larger timeout values
+		        timeout: 50000
           }
 
 				  document.getElementById("reg2").innerText = "navigator.credentials.create({publicKey:\n" + sf(publicKey) + "}";
@@ -137,10 +216,10 @@
 							}
 						*/
 
-	          log('SUCCESSFULLY CREATED A CREDENTIAL', publicKeyCredentialToJSON(rawAttestation))
+	          log('SUCCESSFULLY CREATED A CREDENTIAL', rawAttestation)
 
-						let clientData = arrayBufferToString(rawAttestation.response.clientDataJSON)
-          	log('ClientDataJSON: ', clientData)
+						let clientData = parseClientDataJSON(rawAttestation.response.clientDataJSON)
+          	log('ClientData: ', clientData)
 
           	let attestationObject = CBOR.decode(rawAttestation.response.attestationObject);
 						/*
@@ -152,9 +231,7 @@
 						*/
 	          log('AttestationObject: ', attestationObject);
 	
-						// ArrayBuffer AuthenticatorResponse.attestationObject
-
-						// Authenticator Data: [RP ID hash | flags | counter | AAGUID | CredID | CredPubKey | Extensions]
+						// Array attestationObject.authData: [RP ID hash | flags | counter | AAGUID | CredID | CredPubKey | Extensions]
 		        let authData = parseAuthData(attestationObject.authData); // authData is an Array
 						/*
 						authData: 148 bytes
@@ -175,22 +252,26 @@
 	          log('AuthData: ', authData);
 	          log('AAGUID: ', bufToHex(authData.aaguid));
 	          log('CredID: ', bufToHex(authData.credID));
-	          log('User PublicKey', CBOR.decode(authData.COSEPublicKey.buffer)); // credential public key is referred to as the user public key in FIDO UAF
+	          log('UserPublicKey', CBOR.decode(authData.COSEPublicKey.buffer)); // credential public key is referred to as the user public key in FIDO UAF
 
 						document.getElementById("reg3").innerText = 
 								"rawAttestation:\n" + sf(publicKeyCredentialToJSON(rawAttestation)) + "\n" +
 								"attestationObject:" + sf(attestationObject) + "\n" +
 								"authData: " + attestationObject.authData.length + " bytes\n" + sf(authData) + "\n" +
-								"clientData:\n" + clientData;
+								"UserPublicKey:" + sf(coseToJwk(authData.COSEPublicKey.buffer)) + "\n" +
+								"clientData:\n" + sf(clientData);
 /*
 			      var attestation = {
             	id: base64encode(rawAttestation.rawId),
-            	clientDataJSON: arrayBufferToString(rawAttestation.response.clientDataJSON),
+            	clientData: parseClientDataJSON(rawAttestation.response.clientDataJSON),
             	attestationObject: base64encode(rawAttestation.response.attestationObject)
-
+						}
 						document.getElementById("reg4").innerText = "attestation:^\n" + sf(attestation);
 */
-          	credentialId = authData.credID;
+
+						let ci = base64encode(authData.credID);
+		        localStorage.setItem("credentialId", ci);
+						showCredID(ci);
 					})
           .catch((error) => {
               alert('fail to create credential! ' + error)
@@ -201,19 +282,34 @@
         document.getElementById('login').addEventListener('submit', function(event) {
           event.preventDefault();
 
+					var allowCredentials = [];
+				  if (this.allowCredentialsSelection.checked) {
+				      var credentialId = localStorage.getItem("credentialId");
+							showCredID(credentialId);
+				      if (!credentialId)
+				          return Promise.reject("Please create a credential first");
+				      
+							allowCredentials = [{
+          		  type: "public-key",
+         			  id: Uint8Array.from(atob(credentialId), c=>c.charCodeAt(0)).buffer
+        			}];
+				  }
+
           var challenge = new Uint8Array(32);
           window.crypto.getRandomValues(challenge);
 
 					var publicKey = { //  contains only the challenge 
-					  challenge: challenge,
-
-						allowCredentials: [
-						    { type: "public-key", id: credentialId }
-						]
 						// authenticatorSelection.requireResidentKey is true, so there is no need to pass a credential
 
+		        //specifies which credential IDs are allowed to authenticate the user
+		        //if empty, any credential can authenticate the users
+		        allowCredentials: allowCredentials,
+		        //an opaque challenge that the authenticator signs over
+		        challenge: challenge,
+		        //Since Edge shows UI, it is better to select larger timeout values
+		        timeout: 50000
 					}
-					
+
 					document.getElementById("aut2").innerText = "navigator.credentials.get({publicKey:\n" + sf(publicKey)+ "}";
 
 					return navigator.credentials.get({ 'publicKey': publicKey })
@@ -221,8 +317,8 @@
 
 	          log('\n\n\nSUCCESSFULLY GOT AN ASSERTION!', rawAssertion);
 
-						let clientData = arrayBufferToString(rawAssertion.response.clientDataJSON)
-          	log('ClientDataJSON: ', clientData)
+						let clientData = parseClientDataJSON(rawAssertion.response.clientDataJSON);
+          	log('ClientData: ', clientData)
 
 						document.getElementById("aut3").innerText = "rawAssertion:\n" + 
 							sf(publicKeyCredentialToJSON(rawAssertion)) + "\n" +
@@ -230,12 +326,8 @@
 
 	          log('rawAssertion.response: ', rawAssertion.response);
 
-						// ArrayBuffer AuthenticatorResponse.attestationObject
-
-						// ArrayBuffer Authenticator Data: [RP ID hash | flags | counter | Attested CredData | Extensions]
-						// length >= 37, which is [RP ID hash | flags | counter]
+						// ArrayBuffer rawAssertion.response.authenticatorData: [RP ID hash | flags | counter | Attested CredData | Extensions]
 						// [object AuthenticatorAssertionResponse]: {authenticatorData: ArrayBuffer, clientDataJSON: ArrayBuffer, signature: ArrayBuffer, userHandle: ArrayBuffer}
-						// authenticatorData is an ArrayBuffer
 
 						let authDataBuffer = arrayBufferToArray(rawAssertion.response.authenticatorData)
 						let authData = parseAuthData(authDataBuffer);
@@ -254,20 +346,20 @@
 						*/
 
 	          log('authData: ', authData);
-	          log('userHandle: ', base64encode(rawAssertion.response.userHandle));
+	          log('userHandle: (empty if u2f)', base64encode(rawAssertion.response.userHandle));
 	          log('signature: ', base64encode(rawAssertion.response.signature));
 
 						document.getElementById("aut3").innerText = 
 								"rawAssertion:\n" + sf(publicKeyCredentialToJSON(rawAssertion)) + "\n" +
-								"userHandle:\n" + sf(base64encode(rawAssertion.response.userHandle)) + "\n" +
-								"authData: " + authDataBuffer.length + " bytes\n" + sf(authData) + "\n" +
-								"signature:\n" + sf(base64encode(rawAssertion.response.signature)) + "\n" +
-								"clientData:\n" + clientData;
+								"authenticatorData: " + authDataBuffer.length + " bytes\n" + sf(authData) + "\n" +
+								"userHandle(=user.id, empty if u2f):" + sf(base64encode(rawAssertion.response.userHandle))  + "\n" +
+								"signature:" + sf(base64encode(rawAssertion.response.signature)) + "\n" +
+								"clientData:\n" + sf(clientData);
 
 	/*
 		        var assertion = {
 		            id: base64encode(rawAssertion.rawId),
-		            clientData: arrayBufferToString(rawAssertion.response.clientDataJSON),
+		            clientData: parseClientDataJSON(rawAssertion.response.clientDataJSON),
 		            userHandle: base64encode(rawAssertion.response.userHandle),
 		            signature: base64encode(rawAssertion.response.signature),
 		            authenticatorData: base64encode(rawAssertion.response.authenticatorData)

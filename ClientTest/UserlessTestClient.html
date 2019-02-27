@@ -272,6 +272,7 @@
 						let ci = base64encode(authData.credID);
 		        localStorage.setItem("credentialId", ci);
 						showCredID(ci);
+						alert('Sucessfully created a Credential, saved credentialID in localStorage: ' + ci);
 					})
           .catch((error) => {
               alert('fail to create credential! ' + error)
@@ -366,6 +367,7 @@
 		        }
 					  document.getElementById("aut4").innerText = "authenticatorData:\n" + sf(authData);
 */
+						alert('Sucessfully got an assertion!')
           })
           .catch((error) => {
               alert('fail get credential! ' + error)

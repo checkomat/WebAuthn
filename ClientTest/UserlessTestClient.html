@@ -18,14 +18,21 @@
 
 <body>
 	<div class="container">
-    <div class="form-group">
-      <label class="form-label" for="console">Console</label>
-      <textarea class="form-input" id="console" style="font-size: 10px" placeholder="Textarea" rows="5"></textarea>
-    </div>
+		<div class="accordion">
+		  <input type="checkbox" id="accordion-1" name="accordion-checkbox" hidden>
+		  <label class="accordion-header" for="accordion-1">
+		    <i class="icon icon-arrow-right mr-1"></i>
+		    Console
+		  </label>
+		  <div class="accordion-body">
+	 			<pre id="console" style="font-size: 10px"> </pre>  
+		  </div>
+		</div>
+
 	  <div class="columns">
 	    <div class="column col-sm">
 	      <div class="card">
-	        <h3>Register</h3>
+	        <h4>Register</h4>
 	        <div class="card-body">
 	          <form id="register" onsubmit="return false">
 							<div class="form-group">
@@ -55,19 +62,21 @@
 
 	    <div class="column col-sm">
 				<div class="card">
-				  <h3>Authenticate</h3>
+				  <h4>Authenticate</h4>
 			    <div class="card-body">
 		        <form id="login" onsubmit="return false">
 							<div class="form-group">
 							  <label class="form-switch" >
 							    <input type="checkbox" name="allowCredentialsSelection">
-							    <i class="form-icon"></i> allowCredentials (use last one created in browser)
+							    <i class="form-icon"></i> allowCredentials (use last credential created in this client)
 							  </label>
 							</div>
-	            <input type="text" name="credentialID" placeholder="" style="font-size: 14px" disabled><br> 
-							<br>
+ 							<label class="form-label" for="output-credid">cedentialID</label>
+							<div class="col-9 col-sm-12">
+						  	<input class="form-input" type="text" name="credentialID" id="output-credid" style="font-size: 12px" disabled>
+							</div>
 	            <button class="btn btn-primary btn-sm" action="submit">Authenticate</button>
-		        </form>
+						</form>
 						<br>
 						<br>
 						<br>
@@ -126,8 +135,7 @@
 			      }).catch(e=>{
 			          markPlatformAuthenticatorUnavailable();
 			      });
-			  }
-				
+			  }	
 						
 				var showCredID = (ci) => {
 					document.getElementById('login').credentialID.value = ci;
@@ -175,7 +183,7 @@
                 'displayName': this.displayName.value // 'Alice im Wunderland'
             },
 							
-						'authenticatorSelection': { // forces client to only use authenticator that support RP.
+						'authenticatorSelection': {
   	          //Select authenticators that support username-less flows
 							'requireResidentKey': true,
 
@@ -184,13 +192,11 @@
 
     	        //Selects between bound or detachable authenticators
 	            authenticatorAttachment: attachment
-							
 						},
 
 						'attestation': attestation,
 
-            'pubKeyCredParams': [
-						// desired properties of the credential to be created, 
+            'pubKeyCredParams': [ // desired properties of the credential to be created, 
 						// sequence ordered from most preferred to least preferred.
                 { 'type': 'public-key', 'alg': -7  } //e.g. -7 for "ES256" and 
 								,{ 'type': 'public-key', 'alg': -257 } // -257 for "RS256". 
@@ -203,24 +209,12 @@
 
           return navigator.credentials.create({ 'publicKey': publicKey })  // client adds client data hash?
           .then((rawAttestation) => {
-						/*
-							rawAttestation:	{
-							  "rawId": "0JEKvyRI7KfRwmlvm7N3dQ",
-							  "response": {
-							    "attestationObject": "o2NmbXRmcGFja2VkaGF1dGhEYXRhWJRJlg3liA6MaHQ0Fw9kdmBbj-SuuaKGMseZXPO6gx2XY0UAAACIbUS6m_bsLkm5MAyP6SDLcwAQ0JEKvyRI7KfRwmlvm7N3daUBAgMmIAEhWCBYtw2txBK__GoFXo124qRk2zPS07JVhRai9L3Qp5ObnSJYIIf6OsHI6jlDiI9_6z3ZCK953zxF01TvzfhxT_Nxuv8YZ2F0dFN0bXSjY2FsZyZjc2lnWEYwRAIgH2_jwyG1ryCFUTZj-S5PAAXZrjWULSgt1Pr9oGezMRICID-vLzy0JnkKt1tZN_ofJQ73KJIHn_zaUmGOLxqW5IrnY3g1Y4FZAsEwggK9MIIBpaADAgECAgQq52JjMA0GCSqGSIb3DQEBCwUAMC4xLDAqBgNVBAMTI1l1YmljbyBVMkYgUm9vdCBDQSBTZXJpYWwgNDU3MjAwNjMxMCAXDTE0MDgwMTAwMDAwMFoYDzIwNTAwOTA0MDAwMDAwWjBuMQswCQYDVQQGEwJTRTESMBAGA1UECgwJWXViaWNvIEFCMSIwIAYDVQQLDBlBdXRoZW50aWNhdG9yIEF0dGVzdGF0aW9uMScwJQYDVQQDDB5ZdWJpY28gVTJGIEVFIFNlcmlhbCA3MTk4MDcwNzUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQqA4ZeYEPZnhH_EKolVFeEvwmvjmseOzIXKSFvVRIajNkQ05ndx2i9_kp7x-PavGLm0kaf9Wdbj_qJDMp0hp4_o2wwajAiBgkrBgEEAYLECgIEFTEuMy42LjEuNC4xLjQxNDgyLjEuMTATBgsrBgEEAYLlHAIBAQQEAwIEMDAhBgsrBgEEAYLlHAEBBAQSBBBtRLqb9uwuSbkwDI_pIMtzMAwGA1UdEwEB_wQCMAAwDQYJKoZIhvcNAQELBQADggEBAHJX0Dzcw-EVaYSQ1vgO-VtTByNz2eZHMmMrEdzcd4rsa9WSbQfhe5xUMHiN4y9OR7RYdv-MVSICm-k4eHlXIzHnJ3AWgopxGznHT9bBJYvR5NnlZtVweQNH2lI1wD8P_kCxQo4FxukXmeR1VHFpAe64i7BXiTWIrYiq0w1xTy8vrDbVTbrXEJxbAnqwyrjPNU7xAIoJCGyghpavDPzbwYOY_N8CMWwmIsle5iK90cAKR4nkocy3SaNUul8nYEIwvv-uBua_AvvAFbzRUd811wqYqOQtykSI_PBxBCGI3-odX3S36niLKvnFFKm6uU_nOJzaGVGQsrEwfb-RGOGpKfg",
-							    "clientDataJSON": "ew0KCSJ0eXBlIiA6ICJ3ZWJhdXRobi5jcmVhdGUiLA0KCSJjaGFsbGVuZ2UiIDogIk1taFd3WWZIZ2pmT0hzbk5NeUZGY3cyTDJMWHRBV1ZWbVVJVUp2d0lHRFUiLA0KCSJvcmlnaW4iIDogImh0dHA6Ly9sb2NhbGhvc3QiLA0KCSJ0b2tlbkJpbmRpbmciIDogDQoJew0KCQkic3RhdHVzIiA6ICJzdXBwb3J0ZWQiDQoJfQ0KfQ"
-							  },
-							  "getClientExtensionResults": {},
-							  "id": "0JEKvyRI7KfRwmlvm7N3dQ",
-							  "type": "public-key"
-							}
-						*/
 
-	          log('SUCCESSFULLY CREATED A CREDENTIAL', rawAttestation)
+	          log('RECEIVED AN ATTESTATION!');
 
-						let clientData = parseClientDataJSON(rawAttestation.response.clientDataJSON)
-          	log('ClientData: ', clientData)
-
+						let clientData = parseClientDataJSON(rawAttestation.response.clientDataJSON);
+          	log('ClientData: ', clientData);
+						
           	let attestationObject = CBOR.decode(rawAttestation.response.attestationObject);
 						/*
 								attestationObject: {
@@ -229,27 +223,13 @@
 									fmt: "packed" // "none", "packed", "tpm", "android-key","android-safetynet", "fido-u2f"
 								}
 						*/
-	          log('AttestationObject: ', attestationObject);
 	
 						// Array attestationObject.authData: [RP ID hash | flags | counter | AAGUID | CredID | CredPubKey | Extensions]
+
 		        let authData = parseAuthData(attestationObject.authData); // authData is an Array
-						/*
-						authData: 148 bytes
-						{
-						  "rpIdHash": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2M=",
-						  "flags": {
-						    "up": true,
-						    "uv": true,
-						    "at": true,
-						    "ed": false
-						  },
-						  "counter": 283,
-						  "aaguid": "bUS6m/bsLkm5MAyP6SDLcw==",
-						  "credID": "VGREa5f5p0wQJy6QkVqPdQ==",
-						  "COSEPublicKey": "pQECAyYgASFYIJ35hE2dS5zrC6Y1ySwbcYCbw/xHRenUI3y1sjWbRYb+IlggJSsAeURu0AAphu0ogcDKWqdNqVU6ZKJSYsg7/dExjA4="
-						}
-						*/
+
 	          log('AuthData: ', authData);
+	          log('fmt: ', attestationObject.fmt);
 	          log('AAGUID: ', bufToHex(authData.aaguid));
 	          log('CredID: ', bufToHex(authData.credID));
 	          log('UserPublicKey', CBOR.decode(authData.COSEPublicKey.buffer)); // credential public key is referred to as the user public key in FIDO UAF
@@ -257,28 +237,21 @@
 						document.getElementById("reg3").innerText = 
 								"rawAttestation:\n" + sf(publicKeyCredentialToJSON(rawAttestation)) + "\n" +
 								"attestationObject:" + sf(attestationObject) + "\n" +
-								"authData: " + attestationObject.authData.length + " bytes\n" + sf(authData) + "\n" +
+								"authData: " + attestationObject.authData.length + " bytes\n" + sf(authData) + "\n" 
 								"UserPublicKey:" + sf(coseToJwk(authData.COSEPublicKey.buffer)) + "\n" +
 								"clientData:\n" + sf(clientData);
-/*
-			      var attestation = {
-            	id: base64encode(rawAttestation.rawId),
-            	clientData: parseClientDataJSON(rawAttestation.response.clientDataJSON),
-            	attestationObject: base64encode(rawAttestation.response.attestationObject)
-						}
-						document.getElementById("reg4").innerText = "attestation:^\n" + sf(attestation);
-*/
 
 						let ci = base64encode(authData.credID);
 		        localStorage.setItem("credentialId", ci);
 						showCredID(ci);
-						alert('Sucessfully created a Credential, saved credentialID in localStorage: ' + ci);
+
+						alert('Received an Attestation of format: ' + attestationObject.fmt + ',\n saved credentialID:\n' + ci);
 					})
           .catch((error) => {
               alert('fail to create credential! ' + error)
               log('fail to create credential!', error)
           })
-  		})
+  			})
 
         document.getElementById('login').addEventListener('submit', function(event) {
           event.preventDefault();
@@ -302,11 +275,12 @@
 					var publicKey = { //  contains only the challenge 
 						// authenticatorSelection.requireResidentKey is true, so there is no need to pass a credential
 
-		        //specifies which credential IDs are allowed to authenticate the user
-		        //if empty, any credential can authenticate the users
+		        // specifies which credential IDs are allowed to authenticate the user
 		        allowCredentials: allowCredentials,
+
 		        //an opaque challenge that the authenticator signs over
 		        challenge: challenge,
+
 		        //Since Edge shows UI, it is better to select larger timeout values
 		        timeout: 50000
 					}
@@ -316,16 +290,14 @@
 					return navigator.credentials.get({ 'publicKey': publicKey })
           .then((rawAssertion) => {
 
-	          log('\n\n\nSUCCESSFULLY GOT AN ASSERTION!', rawAssertion);
+	          log('RECEIVED AN ASSERTION!');
 
 						let clientData = parseClientDataJSON(rawAssertion.response.clientDataJSON);
-          	log('ClientData: ', clientData)
+          	log('ClientData: ', clientData);
 
 						document.getElementById("aut3").innerText = "rawAssertion:\n" + 
 							sf(publicKeyCredentialToJSON(rawAssertion)) + "\n" +
 							sf(rawAssertion.response);
-
-	          log('rawAssertion.response: ', rawAssertion.response);
 
 						// ArrayBuffer rawAssertion.response.authenticatorData: [RP ID hash | flags | counter | Attested CredData | Extensions]
 						// [object AuthenticatorAssertionResponse]: {authenticatorData: ArrayBuffer, clientDataJSON: ArrayBuffer, signature: ArrayBuffer, userHandle: ArrayBuffer}
@@ -333,27 +305,14 @@
 						let authDataBuffer = arrayBufferToArray(rawAssertion.response.authenticatorData)
 						let authData = parseAuthData(authDataBuffer);
 
-						/*
-							authData: 37 bytes
-							{
-							  "rpIdHash": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2M=",
-							  "flags": {
-							    "up": true,
-							    "uv": true,
-							    "at": false,
-							    "ed": false
-							  }
-							}
-						*/
-
 	          log('authData: ', authData);
-	          log('userHandle: (empty if u2f)', base64encode(rawAssertion.response.userHandle));
+	          log('userHandle:', base64encode(rawAssertion.response.userHandle));
 	          log('signature: ', base64encode(rawAssertion.response.signature));
 
 						document.getElementById("aut3").innerText = 
 								"rawAssertion:\n" + sf(publicKeyCredentialToJSON(rawAssertion)) + "\n" +
 								"authenticatorData: " + authDataBuffer.length + " bytes\n" + sf(authData) + "\n" +
-								"userHandle(=user.id, empty if u2f):" + sf(base64encode(rawAssertion.response.userHandle))  + "\n" +
+								"userHandle:" + sf(base64encode(rawAssertion.response.userHandle))  + "\n" +
 								"signature:" + sf(base64encode(rawAssertion.response.signature)) + "\n" +
 								"clientData:\n" + sf(clientData);
 
@@ -367,7 +326,7 @@
 		        }
 					  document.getElementById("aut4").innerText = "authenticatorData:\n" + sf(authData);
 */
-						alert('Sucessfully got an assertion!')
+						alert('Received an assertion with userHandle:\n' + base64encode(rawAssertion.response.userHandle))
           })
           .catch((error) => {
               alert('fail get credential! ' + error)
@@ -380,5 +339,6 @@
     <script src="../lib/base64url-arraybuffer.js"></script>
     <script src="../lib/cbor.js"></script>
     <script src="../lib/helpers.js"></script>
+    <script src="../lib/fido.js"></script>
 </body>
 </html>

@@ -56,9 +56,10 @@
 						<br>
 						<div class="text-break">
 			        <b style="font-size: 12px">2. App to Client</b>
-			   			<pre id="reg2" style="font-size: 10px"> </pre>   
+ 			        <pre id="reg2" style="font-size: 10px"> </pre>  
 			        <b style="font-size: 12px">3. Client to App</b>
-			        <pre id="reg3" style="font-size: 10px"> </pre>   
+			        <pre id="reg3" style="font-size: 10px"> </pre>
+			        <pre id="reg3b" style="font-size: 10px"> </pre>
 						</div>
 					</div><!-- .card-body --> 
 	      </div><!-- .card -->
@@ -88,7 +89,7 @@
 					    <b style="font-size: 12px">2. App to Client</b>
 							<pre id="aut2" style="font-size: 10px"> </pre>   		
 					    <b style="font-size: 12px">3. Client to App</b>
-					    <pre id="aut3" style="font-size: 10px"> </pre>   				
+					    <pre id="aut3" style="font-size: 10px"> </pre>   				   				
 						</div>
 					</div><!-- .card-body -->			
 				</div><!-- .card -->
@@ -115,6 +116,7 @@
 					document.getElementById("console").innerText = 	logtext;
 				}
 
+	      log('check for WebAuthn APIs ...');
     		if (!PublicKeyCredential) {
         	log('WebAuthn APIs are not available on this user agent!');
 					alert('WebAuthn APIs are not available on this user agent!');
@@ -128,6 +130,7 @@
 					log("PlatformAuthenticator Unavailable");
 				}
 
+	      log('check for platform authenticator....');
 			  //Update UI to reflect availability of platform authenticator
 			  if (PublicKeyCredential && typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== "function") {
 			      markPlatformAuthenticatorUnavailable();
@@ -140,11 +143,10 @@
 			          markPlatformAuthenticatorUnavailable();
 			      });
 			  }	
-						
+	
 				var showCredID = (ci) => {
 					document.getElementById('login').credentialID.value = ci;
 				}
-
 				showCredID(localStorage.getItem("credentialId"));
 
         document.getElementById('register').addEventListener('submit', function(event) {
@@ -214,8 +216,11 @@
 		        timeout: 50000
           }
 
+					let a = document.getElementById("reg2");
+
 				  document.getElementById("reg2").innerText = "navigator.credentials.create({publicKey:\n" + sf(publicKey) + "}";
 
+					log('call navigator.credentials.create ...');
           return navigator.credentials.create({ 'publicKey': publicKey })  // client adds client data hash?
           .then((rawAttestation) => {
 
@@ -247,6 +252,8 @@
 								"rawAttestation:\n" + sf(publicKeyCredentialToJSON(rawAttestation)) + "\n" +
 								"attestationObject:" + sf(attestationObject) + "\n" +
 								"authData: " + attestationObject.authData.length + " bytes\n" + sf(authData) + "\n" 
+						// <pre></pre> does not display whole text so use 2 elements instead
+						document.getElementById("reg3b").innerText = 
 								"UserPublicKey:" + sf(coseToJwk(authData.COSEPublicKey.buffer)) + "\n" +
 								"clientData:\n" + sf(clientData);
 
@@ -294,6 +301,7 @@
 		        timeout: 50000
 					}
 
+					log('call navigator.credentials.get ...');
 					document.getElementById("aut2").innerText = "navigator.credentials.get({publicKey:\n" + sf(publicKey)+ "}";
 
 					return navigator.credentials.get({ 'publicKey': publicKey })

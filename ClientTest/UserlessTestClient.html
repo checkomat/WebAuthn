@@ -83,8 +83,6 @@
 	            <button class="btn btn-primary btn-sm" action="submit">Authenticate</button>
 						</form>
 						<br>
-						<br>
-						<br>
 						<div class="text-break">
 					    <b style="font-size: 12px">2. App to Client</b>
 							<pre id="aut2" style="font-size: 10px"> </pre>   		
@@ -112,12 +110,14 @@
 						logtext += (text + "\n");
 						console.log(text);
 					}
-
 					document.getElementById("console").innerText = 	logtext;
 				}
 
 	      log('check for WebAuthn APIs ...');
-    		if (!PublicKeyCredential) {
+
+				// webauthn API available?
+
+    		if (!window.PublicKeyCredential) {
         	log('WebAuthn APIs are not available on this user agent!');
 					alert('WebAuthn APIs are not available on this user agent!');
 				}
@@ -126,16 +126,18 @@
 				document.getElementById('login').setAttribute( "autocomplete", "off" );
 
 				function markPlatformAuthenticatorUnavailable() {
+					log('PlatformAuthenticator Unavailable');
 					document.getElementById('register').usePlatformAuthenticator.disabled = true;
-					log("PlatformAuthenticator Unavailable");
 				}
 
 	      log('check for platform authenticator....');
-			  //Update UI to reflect availability of platform authenticator
-			  if (PublicKeyCredential && typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== "function") {
-			      markPlatformAuthenticatorUnavailable();
-			  } else if (PublicKeyCredential && typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === "function") {
-			      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(available => {
+
+			  // Update UI to reflect availability of platform authenticator
+
+			  if (window.PublicKeyCredential && typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== "function") {
+			    markPlatformAuthenticatorUnavailable();
+			  } else if (window.PublicKeyCredential && typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === "function") {
+			      window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(available => {
 			          if (!available) {
 			              markPlatformAuthenticatorUnavailable();
 			          }
@@ -152,9 +154,9 @@
         document.getElementById('register').addEventListener('submit', function(event) {
           event.preventDefault();
 
-          var challenge = new Uint8Array(32);
-          window.crypto.getRandomValues(challenge);
+          var challenge = generateRandomBuffer();
 
+					// using a hard coded userID for testing
           var userID = 'Kosv9fPtkDoh4Oz7Yq/pVgWHS8HhdlCto5cR0aBoVMw='
           var id = Uint8Array.from(window.atob(userID), c=>c.charCodeAt(0))
 
@@ -180,6 +182,7 @@
 						residentkey = 'true'; 
 				  }
 
+					// https://w3c.github.io/webauthn/#op-make-cred
 		      var publicKey = {
             'challenge': challenge,
 
@@ -196,10 +199,10 @@
 							
 						'authenticatorSelection': {
   	          //Select authenticators that support username-less flows
-							'requireResidentKey': residentkey, // seems to have no influence with yubikey, alow credentials shows difference für userHandle
+							'requireResidentKey': residentkey, // seems to have no influence with yubikey, alow credentials shows difference for userHandle
 
             	//Select authenticators that have a second factor (e.g. PIN, Bio)
-//            	userVerification: "required",
+//            	userVerification: "required", //"preferred", "discouraged"
 
     	        //Selects between bound or detachable authenticators
 	            authenticatorAttachment: attachment
@@ -221,7 +224,9 @@
 				  document.getElementById("reg2").innerText = "navigator.credentials.create({publicKey:\n" + sf(publicKey) + "}";
 
 					log('call navigator.credentials.create ...');
-          return navigator.credentials.create({ 'publicKey': publicKey })  // client adds client data hash?
+
+          return navigator.credentials.create({ 'publicKey': publicKey })
+					// client adds for athenticator: hash (client data hash), requireUserPresence (inverse of requireUserVerification) 
           .then((rawAttestation) => {
 
 	          log('RECEIVED AN ATTESTATION!');
@@ -229,6 +234,7 @@
 						let clientData = parseClientDataJSON(rawAttestation.response.clientDataJSON);
           	log('ClientData: ', clientData);
 						
+						// Array attestationObject.authData: [RP ID hash | flags | counter | AAGUID | CredID | CredPubKey | Extensions]
           	let attestationObject = CBOR.decode(rawAttestation.response.attestationObject);
 						/*
 								attestationObject: {
@@ -238,25 +244,21 @@
 								}
 						*/
 	
-						// Array attestationObject.authData: [RP ID hash | flags | counter | AAGUID | CredID | CredPubKey | Extensions]
-
 		        let authData = parseAuthData(attestationObject.authData); // authData is an Array
 
 	          log('AuthData: ', authData);
 	          log('fmt: ', attestationObject.fmt);
-	          log('AAGUID: ', bufToHex(authData.aaguid));
-	          log('CredID: ', bufToHex(authData.credID));
-	          log('UserPublicKey', CBOR.decode(authData.COSEPublicKey.buffer)); // credential public key is referred to as the user public key in FIDO UAF
 
 						document.getElementById("reg3").innerText = 
 								"rawAttestation:\n" + sf(publicKeyCredentialToJSON(rawAttestation)) + "\n" +
 								"attestationObject:" + sf(attestationObject) + "\n" +
 								"authData: " + attestationObject.authData.length + " bytes\n" + sf(authData) + "\n" 
-						// <pre></pre> does not display whole text so use 2 elements instead
+						// "reg3" does not display whole text so use 2 elements instead
 						document.getElementById("reg3b").innerText = 
 								"UserPublicKey:" + sf(coseToJwk(authData.COSEPublicKey.buffer)) + "\n" +
 								"clientData:\n" + sf(clientData);
 
+//						let ci = base64url.encode(authData.credID);
 						let ci = base64encode(authData.credID);
 		        localStorage.setItem("credentialId", ci);
 						showCredID(ci);
@@ -275,24 +277,29 @@
 					var allowCredentials = [];
 				  if (this.allowCredentialsSelection.checked) {
 				      var credentialId = localStorage.getItem("credentialId");
+
 							showCredID(credentialId);
 				      if (!credentialId)
 				          return Promise.reject("Please create a credential first");
 				      
 							allowCredentials = [{
           		  type: "public-key",
-         			  id: Uint8Array.from(atob(credentialId), c=>c.charCodeAt(0)).buffer
+	       			  id: Uint8Array.from(atob(credentialId), c=>c.charCodeAt(0)).buffer
+// 								id: stringToArrayBuffer(base64url.decode(credentialId))
         			}];
+							// function stringToArrayBuffer(str){ return Uint8Array.from(str, c => c.charCodeAt(0)).buffer; }
+							// atob() function decodes a string of data which has been encoded using base-64 encoding.
+
 				  }
 
-          var challenge = new Uint8Array(32);
-          window.crypto.getRandomValues(challenge);
+          var challenge = generateRandomBuffer();
 
 					var publicKey = { //  contains only the challenge 
 						// authenticatorSelection.requireResidentKey is true, so there is no need to pass a credential
 
 		        // specifies which credential IDs are allowed to authenticate the user
 		        allowCredentials: allowCredentials,
+//						credentialMgmtPreview: "true", // FIDO_2_1_PR
 
 		        //an opaque challenge that the authenticator signs over
 		        challenge: challenge,
@@ -302,9 +309,13 @@
 					}
 
 					log('call navigator.credentials.get ...');
+					log('publicKey: ', publicKey);
+
 					document.getElementById("aut2").innerText = "navigator.credentials.get({publicKey:\n" + sf(publicKey)+ "}";
 
+					
 					return navigator.credentials.get({ 'publicKey': publicKey })
+					// client adds for athenticator: rpId, hash(cient data hash), requireUserPresence
           .then((rawAssertion) => {
 
 	          log('RECEIVED AN ASSERTION!');
@@ -319,7 +330,7 @@
 						// ArrayBuffer rawAssertion.response.authenticatorData: [RP ID hash | flags | counter | Attested CredData | Extensions]
 						// [object AuthenticatorAssertionResponse]: {authenticatorData: ArrayBuffer, clientDataJSON: ArrayBuffer, signature: ArrayBuffer, userHandle: ArrayBuffer}
 
-						let authDataBuffer = arrayBufferToArray(rawAssertion.response.authenticatorData)
+						let authDataBuffer = arrayBufferToUint8Array(rawAssertion.response.authenticatorData)
 						let authData = parseAuthData(authDataBuffer);
 
 	          log('authData: ', authData);
@@ -329,8 +340,8 @@
 						document.getElementById("aut3").innerText = 
 								"rawAssertion:\n" + sf(publicKeyCredentialToJSON(rawAssertion)) + "\n" +
 								"authenticatorData: " + authDataBuffer.length + " bytes\n" + sf(authData) + "\n" +
-								"userHandle:" + sf(base64encode(rawAssertion.response.userHandle))  + "\n" +
-								"signature:" + sf(base64encode(rawAssertion.response.signature)) + "\n" +
+								"userHandle:" + sf(base64url.encode(rawAssertion.response.userHandle))  + "\n" +
+								"signature:" + sf(base64url.encode(rawAssertion.response.signature)) + "\n" +
 								"clientData:\n" + sf(clientData);
 
 	/*
@@ -343,7 +354,7 @@
 		        }
 					  document.getElementById("aut4").innerText = "authenticatorData:\n" + sf(authData);
 */
-						alert('Received an assertion with userHandle:\n' + base64encode(rawAssertion.response.userHandle))
+						alert('Received an assertion with userHandle:\n' + base64url.encode(rawAssertion.response.userHandle))
           })
           .catch((error) => {
               alert('fail get credential! ' + error)

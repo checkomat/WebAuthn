@@ -72,6 +72,10 @@
 		        <form id="login" onsubmit="return false">
 							<div class="form-group">
 							  <label class="form-switch" >
+							    <input type="checkbox" name="userVerificationDiscouraged">
+							    <i class="form-icon"></i> userVerificationDiscouraged
+							  </label>
+							  <label class="form-switch" >
 							    <input type="checkbox" name="allowCredentialsSelection">
 							    <i class="form-icon"></i> allowCredentials (use last credential created in this client)
 							  </label>
@@ -87,7 +91,9 @@
 					    <b style="font-size: 12px">2. App to Client</b>
 							<pre id="aut2" style="font-size: 10px"> </pre>   		
 					    <b style="font-size: 12px">3. Client to App</b>
-					    <pre id="aut3" style="font-size: 10px"> </pre>   				   				
+					    <pre id="aut3" style="font-size: 10px"> </pre>
+					    <b style="font-size: 12px">4. Credential Verification</b>
+					    <pre id="aut4" style="font-size: 10px"> </pre>		   				
 						</div>
 					</div><!-- .card-body -->			
 				</div><!-- .card -->
@@ -115,18 +121,29 @@
 
 	      log('check for WebAuthn APIs ...');
 
+				// check if browser supports the crypto api
+				// https://webbjocke.com/javascript-web-encryption-and-hashing-with-the-crypto-api/
+				if(window.crypto && crypto.subtle && window.TextEncoder) {
+	      	log('Crypto APIs are available on this user agent!');
+				}
+				else {
+	      	log('Crypto APIs are NOT available on this user agent!');
+				}
+				
 				// webauthn API available?
 
     		if (!window.PublicKeyCredential) {
         	log('WebAuthn APIs are not available on this user agent!');
 					alert('WebAuthn APIs are not available on this user agent!');
 				}
+        else {
+					log('WebAuthn APIs are available!');
+				}
 
 				document.getElementById('register').setAttribute( "autocomplete", "off" ); 
 				document.getElementById('login').setAttribute( "autocomplete", "off" );
 
 				function markPlatformAuthenticatorUnavailable() {
-					log('PlatformAuthenticator Unavailable');
 					document.getElementById('register').usePlatformAuthenticator.disabled = true;
 				}
 
@@ -144,7 +161,10 @@
 			      }).catch(e=>{
 			          markPlatformAuthenticatorUnavailable();
 			      });
-			  }	
+			  }
+				if (document.getElementById('register').usePlatformAuthenticator.disabled) {
+					log('PlatformAuthenticator Unavailable');
+				}
 	
 				var showCredID = (ci) => {
 					document.getElementById('login').credentialID.value = ci;
@@ -154,11 +174,12 @@
         document.getElementById('register').addEventListener('submit', function(event) {
           event.preventDefault();
 
-          var challenge = generateRandomBuffer();
+					// should be created on server side, with timeout.
+          var challenge = generateRandomBuffer(); 
 
 					// using a hard coded userID for testing
-          var userID = 'Kosv9fPtkDoh4Oz7Yq/pVgWHS8HhdlCto5cR0aBoVMw='
-          var id = Uint8Array.from(window.atob(userID), c=>c.charCodeAt(0))
+          var userID = 'Kosv9fPtkDoh4Oz7Yq/pVgWHS8HhdlCto5cR0aBoVMw=';
+          var id = Uint8Array.from(window.atob(userID), c=>c.charCodeAt(0));
 
 					var attachment = 'cross-platform';
 					if(this.usePlatformAuthenticator.checked) {
@@ -199,10 +220,11 @@
 							
 						'authenticatorSelection': {
   	          //Select authenticators that support username-less flows
-							'requireResidentKey': residentkey, // seems to have no influence with yubikey, alow credentials shows difference for userHandle
+							'requireResidentKey': residentkey, // seems to have no influence with yubikey, allow credentials shows difference for userHandle
 
             	//Select authenticators that have a second factor (e.g. PIN, Bio)
-//            	userVerification: "required", //"preferred", "discouraged"
+							// CHECK-UV
+//	            userVerification: "required", //"required", "preferred", "discouraged"
 
     	        //Selects between bound or detachable authenticators
 	            authenticatorAttachment: attachment
@@ -213,9 +235,8 @@
             'pubKeyCredParams': [ // desired properties of the credential to be created, 
 						// sequence ordered from most preferred to least preferred.
                 { 'type': 'public-key', 'alg': -7  } //e.g. -7 for "ES256" and 
-								,{ 'type': 'public-key', 'alg': -257 } // -257 for "RS256". 
+//								,{ 'type': 'public-key', 'alg': -257 } // -257 for "RS256". 
             ],
-		        //Since Edge shows UI, it is better to select larger timeout values
 		        timeout: 50000
           }
 
@@ -246,9 +267,6 @@
 	
 		        let authData = parseAuthData(attestationObject.authData); // authData is an Array
 
-	          log('AuthData: ', authData);
-	          log('fmt: ', attestationObject.fmt);
-
 						document.getElementById("reg3").innerText = 
 								"rawAttestation:\n" + sf(publicKeyCredentialToJSON(rawAttestation)) + "\n" +
 								"attestationObject:" + sf(attestationObject) + "\n" +
@@ -261,9 +279,15 @@
 //						let ci = base64url.encode(authData.credID);
 						let ci = base64encode(authData.credID);
 		        localStorage.setItem("credentialId", ci);
+		        localStorage.setItem(ci, base64url.encode(authData.COSEPublicKey.buffer));
+
 						showCredID(ci);
 
-						alert('Received an Attestation of format: ' + attestationObject.fmt + ',\n saved credentialID:\n' + ci);
+						// https://www.w3.org/TR/webauthn/#createCredential
+						// https://medium.com/@herrjemand/verifying-fido2-responses-4691288c8770
+
+
+						alert('Received an Attestation of format: ' + attestationObject.fmt + ',\n saved ID and pubKey of credential:\n' + ci);
 					})
           .catch((error) => {
               alert('fail to create credential! ' + error)
@@ -285,12 +309,13 @@
 							allowCredentials = [{
           		  type: "public-key",
 	       			  id: Uint8Array.from(atob(credentialId), c=>c.charCodeAt(0)).buffer
-// 								id: stringToArrayBuffer(base64url.decode(credentialId))
         			}];
-							// function stringToArrayBuffer(str){ return Uint8Array.from(str, c => c.charCodeAt(0)).buffer; }
-							// atob() function decodes a string of data which has been encoded using base-64 encoding.
-
 				  }
+
+					var userVerification = "preferred";
+					if(this.userVerificationDiscouraged.checked) {
+						userVerification = "discouraged";
+					}
 
           var challenge = generateRandomBuffer();
 
@@ -299,7 +324,9 @@
 
 		        // specifies which credential IDs are allowed to authenticate the user
 		        allowCredentials: allowCredentials,
-//						credentialMgmtPreview: true, // FIDO_2_1_PR
+
+						// CHECK-UV
+            userVerification: userVerification, //"required", "preferred", "discouraged"
 
 		        //an opaque challenge that the authenticator signs over
 		        challenge: challenge,
@@ -309,10 +336,8 @@
 					}
 
 					log('call navigator.credentials.get ...');
-					log('publicKey: ', publicKey);
 
 					document.getElementById("aut2").innerText = "navigator.credentials.get({publicKey:\n" + sf(publicKey)+ "}";
-
 					
 					return navigator.credentials.get({ 'publicKey': publicKey })
 					// client adds for athenticator: rpId, hash(cient data hash), requireUserPresence
@@ -321,16 +346,11 @@
 	          log('RECEIVED AN ASSERTION!');
 
 						let clientData = parseClientDataJSON(rawAssertion.response.clientDataJSON);
-          	log('ClientData: ', clientData);
-
-						document.getElementById("aut3").innerText = "rawAssertion:\n" + 
-							sf(publicKeyCredentialToJSON(rawAssertion)) + "\n" +
-							sf(rawAssertion.response);
 
 						// ArrayBuffer rawAssertion.response.authenticatorData: [RP ID hash | flags | counter | Attested CredData | Extensions]
 						// [object AuthenticatorAssertionResponse]: {authenticatorData: ArrayBuffer, clientDataJSON: ArrayBuffer, signature: ArrayBuffer, userHandle: ArrayBuffer}
 
-						let authDataBuffer = arrayBufferToUint8Array(rawAssertion.response.authenticatorData)
+						let authDataBuffer = arrayBufferToUint8Array(rawAssertion.response.authenticatorData);
 						let authData = parseAuthData(authDataBuffer);
 
 	          log('authData: ', authData);
@@ -354,7 +374,72 @@
 		        }
 					  document.getElementById("aut4").innerText = "authenticatorData:\n" + sf(authData);
 */
-						alert('Received an assertion with userHandle:\n' + base64url.encode(rawAssertion.response.userHandle))
+
+						// https://w3c.github.io/webauthn/#verifying-assertion
+
+				    // Step 3: Using credential id attribute (or the corresponding rawId) to look up 
+						// the corresponding credential public key.
+				    const publicKeyJwk = coseToJwk(base64url.decode(localStorage.getItem(base64encode(rawAssertion.rawId))));
+				    if (!publicKeyJwk)  throw new Error("Could not read stored credential public key");
+	          log('Step 3: Using credential id to look up the corresponding credential publicKeyJwk', publicKeyJwk);
+
+				    // Step 4: Let cData, authData and sig denote the value of credential's response's 
+						// clientDataJSON, authenticatorData, and signature respectively
+						// clientDataJSON: This attribute, inherited from AuthenticatorResponse, contains the JSON-serialized client data 
+						// passed to the authenticator by the client in order to generate this assertion. 
+						// The exact JSON serialization MUST be preserved, as the hash of the serialized client data has been computed over it.
+
+				    const cData = rawAssertion.response.clientDataJSON;
+				    const aData = rawAssertion.response.authenticatorData; // ArrayBuffer contains the authenticator data returned by the authenticator.
+				    const sig = rawAssertion.response.signature; // ArrayBuffer contains the raw signature returned from the authenticator
+
+						// Step 11: Verify that the rpIdHash in authData is the SHA-256 hash of the RP ID expected by the Relying Party.
+// 						const hostname = process.env.HOSTNAME || "localhost";
+//				    if (!authData.rpIdHash.equals(KJUR.crypto.Util.sha256(hostname))) throw new Error("RPID hash does not match expected value: sha256(" + rpId + ")");
+
+				    // Step 12: Verify that the User Present bit of the flags in authData is set
+				    if (!authData.flags.up) throw new Error("User Present bit was not set.");
+				
+				    // Step 13: Verify that the User Verified bit of the flags in authData is set
+//				    if (!authData.flags.uv) throw new Error("User Verified bit was not set.");
+
+				   	// Step 15: Let hash be the result of computing a hash over the clientDataJSON using SHA-256.
+				    const cDataHashHex = KJUR.crypto.Util.hashHex(ArrayBuffertohex(cData), "SHA256");
+
+						// Step 16: Using the credential public key looked up in step 3, 
+						// verify that sig is a valid signature over the binary concatenation of authData and hash.
+
+						// https://tools.ietf.org/agenda/82/slides/jose-2.pdf
+
+						// For COSEAlgorithmIdentifier -7 (ES256), and other ECDSA-based algorithms, a signature value is 
+						// encoded as an ASN.1 DER Ecdsa-Sig-Value, as defined in [RFC3279] section 2.2.3.
+						// https://w3c.github.io/webauthn/#signature-attestation-types
+
+						// the result of the signature is the EC point (R, S), where R and S are unsigned integers.
+
+						var parsedSig = KJUR.crypto.ECDSA.parseSigHexInHexRS(ArrayBuffertohex(sig));
+						var sigValue = KJUR.crypto.ECDSA.hexRSSigToASN1Sig(parsedSig.r, parsedSig.s);
+
+						// loading JSON Web Key(JWK)
+						if (publicKeyJwk.kty === "RSA") throw new Error("not recommeded: user key of type RSA!");
+						const pubKey = KEYUTIL.getKey(publicKeyJwk); // KJUR.crypto.ECDSA
+
+						document.getElementById("aut4").innerText = 
+								"credPubKey from localStorage: publicKeyJwk\n" + sf(publicKeyJwk) + "\n" +
+								"Signed Login Statement (incl. authData.rpIdHash, clientData.challenge): (aDataHex || cDataHashHex): \n" + sf(ArrayBuffertohex(aData)) + " " + sf(cDataHashHex)+ "\n" +
+								"Signature of Statement: " + sf(sigValue)
+
+	          log('Step 16: verify that credential has signed over hashes incl. "authData.rpIdHash, clientData.challenge,..', sigValue);
+
+						// ECDSA signature verifying
+						var ec = new KJUR.crypto.Signature({'alg':'SHA256withECDSA'});
+						ec.init(pubKey); // KJUR.crypto.ECDSA object of public key
+						ec.updateHex(ArrayBuffertohex(aData));
+						ec.updateHex(cDataHashHex);
+						var isValid = ec.verify(sigValue); // String signature bytes of a hexadecimal string ?
+						if (!isValid) throw new Error("Could not verify signature");
+
+						alert('Received an assertion,  Statement signed by credential: ' + isValid + ', with userHandle:\n' + base64url.encode(rawAssertion.response.userHandle))
           })
           .catch((error) => {
               alert('fail get credential! ' + error)
@@ -362,10 +447,12 @@
           })
     		})
 
-
     </script>
     <script src="../lib/base64url-arraybuffer.js"></script>
     <script src="../lib/cbor.js"></script>
     <script src="../lib/helpers.js"></script>
+		<script language="JavaScript" type="text/javascript"
+        src="http://kjur.github.io/jsrsasign/jsrsasign-latest-all-min.js">
+		</script>
 </body>
 </html>

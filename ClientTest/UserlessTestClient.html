@@ -377,14 +377,6 @@
 
 						// https://w3c.github.io/webauthn/#verifying-assertion
 
-						// Step 1: If the allowCredentials option was given when this authentication ceremony was initiated, 
-						// verify that credential.id identifies one of the public key credentials that were listed in allowCredentials.
-						// --
-
-						// Step 2:Identify the user being authenticated and verify that this user is the owner of the 
-						// public key credential source credentialSource identified by credential.id:
-						// --
-
 				    // Step 3: Using credential id attribute (or the corresponding rawId) to look up 
 						// the corresponding credential public key.
 				    const publicKeyJwk = coseToJwk(base64url.decode(localStorage.getItem(base64encode(rawAssertion.rawId))));
@@ -401,14 +393,6 @@
 				    const aData = rawAssertion.response.authenticatorData; // ArrayBuffer contains the authenticator data returned by the authenticator.
 				    const sig = rawAssertion.response.signature; // ArrayBuffer contains the raw signature returned from the authenticator
 
-						// Verify client data
-						// Step 5: Let JSONtext be the result of running UTF-8 decode on the value of cData.
-						// Step 6: Let C, the client data claimed as used for the signature, be the result of running an implementation-specific JSON parser on JSONtext.
-						// Step 7: Verify that the value of C.type is the string webauthn.get.
-						// Step 8: Verify that the value of C.challenge matches the challenge that was sent to the authenticator in the PublicKeyCredentialRequestOptions passed to the get() call.
-						// Step 9: Verify that the value of C.origin matches the Relying Party's origin.
-						// Step 10: Verify that the value of C.tokenBinding.status
-
 						// Step 11: Verify that the rpIdHash in authData is the SHA-256 hash of the RP ID expected by the Relying Party.
 // 						const hostname = process.env.HOSTNAME || "localhost";
 //				    if (!authData.rpIdHash.equals(KJUR.crypto.Util.sha256(hostname))) throw new Error("RPID hash does not match expected value: sha256(" + rpId + ")");
@@ -419,9 +403,6 @@
 				    // Step 13: Verify that the User Verified bit of the flags in authData is set
 //				    if (!authData.flags.uv) throw new Error("User Verified bit was not set.");
 
-				    // Step 14: Verify that the values of the client extension outputs in clientExtensionResults and 
-						// the authenticator extension outputs in the extensions in authData are as expected
-// ??
 				   	// Step 15: Let hash be the result of computing a hash over the clientDataJSON using SHA-256.
 				    const cDataHashHex = KJUR.crypto.Util.hashHex(ArrayBuffertohex(cData), "SHA256");
 
@@ -458,13 +439,6 @@
 						var isValid = ec.verify(sigValue); // String signature bytes of a hexadecimal string ?
 						if (!isValid) throw new Error("Could not verify signature");
 
-						// Step 17: If the signature counter value authData.signCount is nonzero or the value stored in conjunction 
-						// with credential’s id attribute is nonzero, then run the following sub-step:
-
-						// Step 18: 
-						// If all the above steps are successful, continue with the authentication ceremony as appropriate. 
-						// Otherwise, fail the authentication ceremony.
-
 						alert('Received an assertion,  Statement signed by credential: ' + isValid + ', with userHandle:\n' + base64url.encode(rawAssertion.response.userHandle))
           })
           .catch((error) => {
@@ -477,8 +451,6 @@
     <script src="../lib/base64url-arraybuffer.js"></script>
     <script src="../lib/cbor.js"></script>
     <script src="../lib/helpers.js"></script>
-		<script language="JavaScript" type="text/javascript"
-        src="http://kjur.github.io/jsrsasign/jsrsasign-latest-all-min.js">
-		</script>
+		<script src="../lib/jws-3.2.min.js"></script>
 </body>
 </html>
